@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:servicenow="http://www.mulesoft.org/schema/mule/servicenow" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/servicenow http://www.mulesoft.org/schema/mule/servicenow/current/mule-servicenow.xsd">
+	<flow name="mf-bsa-salesforce-to-servicenow-syncFlow" doc:id="c235128a-dbde-42e7-b70b-c47b66f8adbd" >
+		<salesforce:replay-channel-listener streamingChannel="${secure::sf.streaming_channel}" replayOption="FROM_LAST_REPLAY_ID" doc:name="Replay channel listener" doc:id="d39bf721-e3b8-49bd-b078-b8caa5ab63eb" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Payload to json" doc:id="d4cfbe8c-e0ce-4b93-960f-c68386aedad1">
+			<ee:message>
+				<ee:set-payload resource="dataweave/SF_To_Servicenow/pIncomingSFRecord.dwl" />
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable resource="dataweave/SF_To_Servicenow/vSalesforceID.dwl" variableName="vSalesforceID" />
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Info Log" doc:id="a014c900-12e9-48a6-a050-92a87e752bf7" message="#[payload]" />
+		<choice doc:name="Choice of changeType and commitUser" doc:id="7766e66a-60bc-4166-89d6-30b70ccc8942" >
+			<when expression="#[payload.data.payload.ChangeEventHeader.changeType == &quot;CREATE&quot; and payload.data.payload.ChangeEventHeader.commitUser != p('secure::sf.commitUser')]">
+				<flow-ref doc:name="mf-servicenow-sync-insert" doc:id="a716ce14-f019-4413-9f40-8e87602ef315" name="mf-servicenow-sync-insert"/>
+				<flow-ref doc:name="mf-sysID-update-to-Salesforce" doc:id="c66fc288-4105-48ce-858b-8459b2e0665f" name="mf-sysID-update-to-Salesforce"/>
+			</when>
+			<when expression="#[payload.data.payload.ChangeEventHeader.changeType == &quot;UPDATE&quot; and payload.data.payload.ChangeEventHeader.commitUser != p('secure::sf.commitUser')]">
+				<flow-ref doc:name="mf-get-systemId-from-salesfoce" doc:id="b5a353f9-21c2-41fc-b1d0-26c04c0c849e" name="mf-get-systemId-from-salesfoce"/>
+				<flow-ref doc:name="mf-servicenow-sync-update" doc:id="9d3a1fd4-9cb6-4ac9-99ff-4aebb3e797eb" name="mf-servicenow-sync-update" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Info Log" doc:id="63eb0c62-b4b6-4483-b149-e15eeb49c07a" message="Updated completed to SF by Mulesoft"/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Log" doc:id="8df295fb-52c5-4e9b-86d2-07aeece498b9" message="Sync with Servicenow completed"/>
+	</flow>
+	<flow name="mf-servicenow-sync-insert" doc:id="965ea67a-948f-4f64-ba48-f2317d98d219" >
+		<logger level="INFO" doc:name="Start log" doc:id="d312312d-26f4-44b1-9ae4-b29655a92019" message="Start serviceNow Insert"/>
+		<ee:transform doc:name="Request for Servicenow Insert" doc:id="39dfdfbc-0df4-47cf-ac36-fdad04e68e1f" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/SF_To_Servicenow/pServicenowInsertReq.dwl" />
+			</ee:message>
+		</ee:transform>
+		<servicenow:invoke service="incident" operation="insert" doc:name="Servicenow Insert" doc:id="f6982005-1252-4b60-b0b0-c14bd846bf21" config-ref="ServiceNow_Config" showReferenceValues="ALL"/>
+		<ee:transform doc:name="Response from  Servicenow Insert" doc:id="ffd01265-ce39-4af7-b566-c24964ed9465" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/SF_To_Servicenow/pServicenowInsertRes.dwl" />
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End log" doc:id="7b2d17f4-9f2a-44b2-a44b-5c8bd553f9d0" message="#[payload]"/>
+	</flow>
+	<flow name="mf-sysID-update-to-Salesforce" doc:id="df94d0e2-051a-4cc4-bc04-052dbaae36ea" >
+		<ee:transform doc:name="Request for Update Servicenow ID to Salesforce" doc:id="6008895d-e2ec-4e99-83fa-7ec54e1f6777" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/SF_To_Servicenow/pUpdateServiceNowId.dwl" />
+			</ee:message>
+		</ee:transform>
+		<salesforce:update doc:name="Update Servicenow Id to Salesforce" doc:id="dbc8254c-7065-47b2-a2fc-1f16951b9299" config-ref="Salesforce_Config" type="${secure::sf.object}"/>
+	</flow>
+	<flow name="mf-get-systemId-from-salesfoce" doc:id="31544b9c-af6e-4bec-9bc4-186ac0cdaedf" >
+		<salesforce:query doc:name="get SystemId__c" doc:id="7fdfadce-9320-4f36-a3ad-603ec0297862" config-ref="Salesforce_Config" target="vSys_Id">
+			<salesforce:salesforce-query ><![CDATA[select SystemId__c from Case where Id= ':Id']]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	Id : payload.data.payload.ChangeEventHeader.recordIds[0]
+}]]]></salesforce:parameters>
+		</salesforce:query>
+	</flow>
+	<flow name="mf-servicenow-sync-update" doc:id="c66d8c0a-eb5b-4d30-9972-05e61bf0db63" >
+		<logger level="INFO" doc:name="Start log" doc:id="2e231b83-4d6b-4dd0-96e4-213b866050c9" message="Start serviceNow Update"/>
+		<ee:transform doc:name="Request for Servicenow Update" doc:id="18224a53-e3ea-41d9-98ce-5a44c3fe86a5" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/SF_To_Servicenow/pServicenowUpdateReq.dwl" />
+			</ee:message>
+		</ee:transform>
+		<servicenow:invoke service="incident" operation="update" doc:name="Servicenow Update" doc:id="67b4f9ce-d588-46a9-a260-3787e5b703aa" config-ref="ServiceNow_Config" showReferenceValues="ALL"/>
+		<ee:transform doc:name="Response from  Servicenow Update" doc:id="11654cfb-11f5-41ff-b269-eab65770129d" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/SF_To_Servicenow/pServicenowUpdateRes.dwl" />
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End log" doc:id="d695cd6e-03f7-4685-aa14-49df60d22539" message="#[payload]"/>
+	</flow>
+</mule>

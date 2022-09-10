@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:servicenow="http://www.mulesoft.org/schema/mule/servicenow"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/servicenow http://www.mulesoft.org/schema/mule/servicenow/current/mule-servicenow.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<flow name="mf-bsa-servicenow-to-salesforce-syncFlow" doc:id="91be5bfb-37d8-4399-81e2-6b03f392c9b7" >
+		<servicenow:new-or-updated-record-listener doc:name="On New/Updated Record" doc:id="99b4962d-f503-4e76-b066-9cccb54702ed" config-ref="ServiceNow_Config" tableName="incident">
+			<scheduling-strategy >
+				<fixed-frequency frequency="${secure::servicenow.frequency}"/>
+			</scheduling-strategy>
+		</servicenow:new-or-updated-record-listener>
+		<ee:transform doc:name="Payload to Json" doc:id="a0e3ae20-36e8-4631-9dba-ace1f9e15fde" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/ServiceNow_To_SF/pIncomingServicenowRecord.dwl" />
+			
+</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Start log" doc:id="abd236f4-a2e6-4c9c-9a29-56ea89a405a4" message="#[payload]"/>
+		<choice doc:name="Choice of sys_updated_by" doc:id="769269f9-1be5-411d-96bb-034f60afa48f" >
+			<when expression="#[payload.getRecordsResult.sys_updated_by != p('secure::servicenow.sys_updated_by')]">
+				<flow-ref doc:name="mf-salesforce-upsert" doc:id="18bbecc1-0c29-4eab-8c14-0cb249d079ef" name="mf-salesforce-sync-upsert" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Info Log" doc:id="0fe9e9b9-51d1-41c8-90f7-19273db7e851" message="Updated completed to ServiceNow by Mulesoft"/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="End Log" doc:id="2156a0fc-ef30-42d6-8536-c5a5b07a6406" message="Sync with Salesforce completed"/>
+	</flow>
+	<flow name="mf-salesforce-sync-upsert" doc:id="a4506a8f-f857-4bd1-be11-2fd2a73f0cb2" >
+		<ee:transform doc:name="Transform Message" doc:id="f50d7147-c805-44c9-85b5-bf9eca6d690c" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/ServiceNow_To_SF/pSFUpsertReq.dwl" />
+			</ee:message>
+		</ee:transform>
+		<salesforce:upsert objectType="${secure::sf.object}" doc:name="Upsert" doc:id="1518fe2f-7937-4f48-b407-08b8219c2dd8" config-ref="Salesforce_Config" externalIdFieldName="${secure::sf.external_id}"/>
+	</flow>
+	
+</mule>

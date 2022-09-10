@@ -1,0 +1,16 @@
+sf:
+  username: "![ZC7mRmt4B4IwUWOGQvX1jUr1wzht3Mbiw/qdL6VWVNp5rIU1m4R+/g==]"
+  password: "![YFLUh1O7294Ltgi9aCVs3w==]"
+  commitUser: "![bWjgdtAOu5Wh47orqHKuLfWssisqxAZ8]" #Mulesoft Integration User at Salesforce
+  security_token: "![igHSnEMbV8hGHbZ600L6Uuw4NXW3yLhlfA8HqtfikX4=]"
+  object: "Case"
+  external_id: "SystemId__c"
+  streaming_channel: "/data/CaseChangeEvent"
+  
+
+servicenow:
+  username: "![cr1pVySWaLc=]"
+  password: "![QvVUMGabG0Lkjoao72r3Gg==]"
+  sys_updated_by: "![cr1pVySWaLc=]" #Mulesoft Integration User at Servicenow
+  service_address: "![/vqtTMqHd9fovcEw8Gjl1G9muNJAb5eK1pQ/WmrZ6C6p5iZXAOl1lw==]"
+  frequency: "1000" #In milliseconds

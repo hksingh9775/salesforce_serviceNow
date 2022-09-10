@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:servicenow="http://www.mulesoft.org/schema/mule/servicenow" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/servicenow http://www.mulesoft.org/schema/mule/servicenow/current/mule-servicenow.xsd">
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="76553948-8018-45bf-a1fb-683189184bc2" >
+		<salesforce:basic-connection username="${secure::sf.username}" password="${secure::sf.password}" securityToken="${secure::sf.security_token}" url="https://test.salesforce.com/services/Soap/u/54.0"/>
+	</salesforce:sfdc-config>
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="639615c3-a33c-4dfc-b723-9ede771a2d6a" file="properties\bsa-sf-servicenow-${mule.env}.yaml" key="${bsa.encyption.key}" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<servicenow:config name="ServiceNow_Config" doc:name="ServiceNow Config" doc:id="48de400f-5c95-4093-aed6-b2201a1ac08d" >
+		<servicenow:basic-connection username="${secure::servicenow.username}" password="${secure::servicenow.password}" serviceAddress="${secure::servicenow.service_address}"/>
+	</servicenow:config>
+</mule>
